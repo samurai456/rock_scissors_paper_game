@@ -1,43 +1,8 @@
 import sys
 import random
-import hashlib
-import hmac
-import secrets
-from prettytable import PrettyTable
-
-class HMAC:
-    def __init__(self, message):
-        self.secret_key = secrets.token_hex(32).upper()
-        self.message = message
-        self.hexdigest = self.get_hmac(self.secret_key, message).upper()
-    
-    def get_hmac(self, secret_key, message):
-        secret_key = secret_key.encode()
-        message = message.encode()
-        return hmac.new(secret_key, message, hashlib.sha256).hexdigest()
-
-
-class Winner():
-    def calculate_winner(self, pc_move, user_move, moves):
-        if pc_move == user_move: return
-
-        pc_move_index = moves.index(pc_move)
-        user_move_index = moves.index(user_move)
-        half = len(moves) // 2
-        end_index = user_move_index+1 + half
-
-        if pc_move in moves[user_move_index+1 : end_index]:
-            return pc_move
-
-        if end_index > len(moves):
-            end_index = end_index - len(moves)
-
-            if pc_move in moves[user_move_index+1 : ] or \
-            pc_move in moves[ : end_index]:
-                return pc_move
-
-        return user_move
-
+from hmac_sha256 import HMAC
+from table_generator import TableGenerator
+from winner import Winner
 
 class Game:
     def __init__(self, moves):
@@ -45,7 +10,7 @@ class Game:
         self.pc_move = random.choice(moves)
         self.hmac = HMAC(self.pc_move)
 
-    def get_user_move(self):
+    def print_menu(self):
         print()
         print(f'HMAC: {self.hmac.hexdigest}')
         print('Available moves:')
@@ -53,10 +18,13 @@ class Game:
             print(f'{i+1} - {move}')
         print('0 - exit')
         print('? - help')
+
+    def get_user_move(self):
         return input('Enter your move: ')
 
     def run(self):
         while True:
+            self.print_menu()
             user_move_sym = self.get_user_move()
             self.user_move = self.process_user_move(user_move_sym)
             if self.user_move: break
@@ -70,7 +38,7 @@ class Game:
             exit()
         
         if user_move_sym == '?':
-            GenerateTable(self.moves).print_table()
+            TableGenerator(self.moves).print_table()
             return
 
         if not user_move_sym.isdigit():
@@ -96,27 +64,7 @@ class Game:
         print(f'HMAC key: {self.hmac.secret_key}')
 
 
-class GenerateTable:
-    def __init__(self, moves):
-        self.moves = moves
 
-    def print_table(self):
-        print()
-        print('Table describes who wins.')
-        table = PrettyTable()
-        header = ['', *self.moves]
-        table.field_names = header
-
-        for i in self.moves:
-            row = [i]
-            for x in self.moves:
-                winner = Winner().calculate_winner(i, x, self.moves)
-                if not winner: 
-                    winner = 'draw'
-                row.append(winner)
-            table.add_row(row)
-
-        print(table)
         
 def check_moves(moves):
     if len(moves) < 3:
